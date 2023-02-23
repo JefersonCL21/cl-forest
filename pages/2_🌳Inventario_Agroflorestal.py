@@ -276,7 +276,7 @@ if page == 'Sucupira Agroflorestas':
         with Sub_box_col1:
                 
                 
-            map_df['Quantidade'] = 1        
+            map_df['Quantidade'] = 0        
             for j in range(0, len(map_df.index)):
                 for i in range(0, len(plantios.index)):
                     if (map_df.iloc[j, 1] == plantios.index[i][0]):
@@ -303,69 +303,38 @@ if page == 'Sucupira Agroflorestas':
             st.plotly_chart(fig1, use_container_width=True)
 
     #Função para fluxograma inicia aqui 
-            def classe(data = df1, numberClass = 13):
-                        
-                minData = floor(min(data))
-                maxData = round(max(data))+ 3
-            
-                ampTotal = maxData - minData
-                ampClass = round((ampTotal / numberClass))
-                
-                classes = []
-                LI = []
-                LS = []
-                centro = []
-                clas = []
-                
-                for i in range (0, numberClass): 
-                    if i == 0:
-                        classes.append(minData)
-                    else:
-                        classes.append(classes[i-1] + ampClass) 
-                        
-                for j in range(0, numberClass-1):        
-                    LI.append(classes[j])
-                    LS.append(classes[j+1])
-                    clas.append('['+str(classes[j])+ ", "+ str(classes[j+1])+'[')
+            def classe(data=df1, numberClass=13):
+                minData = np.floor(data.min())
+                maxData = np.round(data.max()) + 3
 
-                LI.append(classes[j+1])
-                LS.append(classes[j+1] + ampClass)
-                clas.append('['+str(classes[j+1])+ ", "+ str(classes[j+1]+ ampClass)+'[')   
-                lista_de_tuplas = list(zip(LI, LS, clas))                
-                    
-                lista_de_tuplas = list(zip(LI, LS, clas))
-
-                # converte uma lista de tuplas num DataFrame
-                df = pd.DataFrame(lista_de_tuplas, columns=['LI', 'LS', 'clas'])       
-                                        
+                classes = np.linspace(minData, maxData, num=numberClass, endpoint=True)
+                LI = np.round(classes[:-1],1)
+                LS = np.round(classes[1:],1)
+                clas = [f"[{LI[i]}, {LS[i]})" for i in range(numberClass-1)]
+                df = pd.DataFrame({'LI': LI, 'LS': LS, 'clas': clas})
                 return df
 
-            dadosHist = df.loc[(df['Especie'].isin(especie)) & (~df['DAP'].isnull())]
-            dadosBar = classe(data = dadosHist['DAP'])
-            dadosHist['classe'] = 'classe'
-            dadosHist['ordem'] = 0
+            # Filtre os dados com base na espécie e remova as linhas com valor nulo em 'DAP'
+            dadosHist = df.query('Especie in @especie and not DAP.isnull()')
 
-            for i in range(len(dadosBar)):      
-                dadosHist.loc[dadosHist['DAP'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'classe'] = dadosBar.loc[i, 'clas'] 
-                dadosHist.loc[dadosHist['DAP'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'ordem'] = dadosBar.loc[i, 'LI']
+            # Crie uma coluna que indica a classe para cada linha com base nos limites das classes
+            dadosBar = classe(data=dadosHist['DAP'])
+            dadosHist['classe'] = pd.cut(dadosHist['DAP'], bins=dadosBar['LI'].tolist()+[dadosBar['LS'].iloc[-1]], labels=dadosBar['clas'].tolist())
 
-            dadosBar1 = dadosHist.sort_values(['ordem'])
-            dadosBar2 = (dadosBar1.groupby(['classe'])['ordem']
-                        .count().reset_index().rename(columns={'ordem': 'n'}))
+            # Agrupe as linhas por classe e conte o número de linhas em cada classe
+            dadosBar2 = dadosHist.groupby('classe')['DAP'].agg(['count', 'mean']).reset_index()
+            dadosBar2 = dadosBar2.rename(columns={'count': 'n', 'mean': 'ordem'}).sort_values('ordem')
 
-            dadosBar3 = (dadosBar1.groupby(['classe'])['ordem']
-                        .mean().reset_index().merge(dadosBar2[['classe', 'n']], on='classe')
-                        .sort_values(['ordem']))
+            # Remova a coluna 'DAP' do dataframe de saída
+            dadosBar2 = dadosBar2[['classe', 'n', 'ordem']]
 
-            fig2 = px.bar(dadosBar3, x='classe', y = 'n')
+            fig2 = px.bar(dadosBar2, x='classe', y = 'n')
             fig2.update_traces(marker_color="#1D250E")
             #fig2.update_layout(plot_bgcolor="#FFFAFA")
                                                                         
-            st.plotly_chart(fig2, use_container_width=True)
-            
+            st.plotly_chart(fig2, use_container_width=True)            
+          
            
-
-            
             
             
 
@@ -423,63 +392,32 @@ if page == 'Sucupira Agroflorestas':
                 st.plotly_chart(fig1, use_container_width=True)
 
         #Função para fluxograma inicia aqui 
-                def classe(data = df1, numberClass = 13):
-                            
-                    minData = floor(min(data))
-                    maxData = round(max(data))+ 3
-                
-                    ampTotal = maxData - minData
-                    ampClass = round((ampTotal / numberClass))
-                    
-                    classes = []
-                    LI = []
-                    LS = []
-                    centro = []
-                    clas = []
-                    
-                    for i in range (0, numberClass): 
-                        if i == 0:
-                            classes.append(minData)
-                        else:
-                            classes.append(classes[i-1] + ampClass) 
-                            
-                    for j in range(0, numberClass-1):        
-                        LI.append(classes[j])
-                        LS.append(classes[j+1])
-                        clas.append('['+str(classes[j])+ ", "+ str(classes[j+1])+'[')
+                def classe(data=df1, numberClass=13):
+                    minData = np.floor(data.min())
+                    maxData = np.round(data.max()) + 3
 
-                    LI.append(classes[j+1])
-                    LS.append(classes[j+1] + ampClass)
-                    clas.append('['+str(classes[j+1])+ ", "+ str(classes[j+1]+ ampClass)+'[')   
-                    lista_de_tuplas = list(zip(LI, LS, clas))                
-                        
-                    lista_de_tuplas = list(zip(LI, LS, clas))
-
-                    # converte uma lista de tuplas num DataFrame
-                    df = pd.DataFrame(lista_de_tuplas, columns=['LI', 'LS', 'clas'])       
-                                            
+                    classes = np.linspace(minData, maxData, num=numberClass, endpoint=True)
+                    LI = np.round(classes[:-1],1)
+                    LS = np.round(classes[1:],1)
+                    clas = [f"[{LI[i]}, {LS[i]})" for i in range(numberClass-1)]
+                    df = pd.DataFrame({'LI': LI, 'LS': LS, 'clas': clas})
                     return df
 
-                dadosHist = df.loc[(df['Especie'].isin(especie)) & (~df['HT_Est'].isnull())]
-                dadosBar = classe(data = dadosHist['HT_Est'])
-                dadosHist['classe'] = 'classe'
-                dadosHist['ordem'] = 0
+                # Filtre os dados com base na espécie e remova as linhas com valor nulo em 'HT_Est'
+                dadosHist = df.query('Especie in @especie and not HT_Est.isnull()')
 
-                for i in range(len(dadosBar)):      
-                    dadosHist.loc[dadosHist['HT_Est'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'classe'] = dadosBar.loc[i, 'clas'] 
-                    dadosHist.loc[dadosHist['HT_Est'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'ordem'] = dadosBar.loc[i, 'LI']
+                # Crie uma coluna que indica a classe para cada linha com base nos limites das classes
+                dadosBar = classe(data=dadosHist['HT_Est'])
+                dadosHist['classe'] = pd.cut(dadosHist['HT_Est'], bins=dadosBar['LI'].tolist()+[dadosBar['LS'].iloc[-1]], labels=dadosBar['clas'].tolist())
 
-                dadosBar1 = dadosHist.sort_values(['ordem'])
+                # Agrupe as linhas por classe e conte o número de linhas em cada classe
+                dadosBar2 = dadosHist.groupby('classe')['HT_Est'].agg(['count', 'mean']).reset_index()
+                dadosBar2 = dadosBar2.rename(columns={'count': 'n', 'mean': 'ordem'}).sort_values('ordem')
 
-                dadosBar2 = (dadosBar1.groupby(['classe'])['ordem']
-                            .count().reset_index().rename(columns={'ordem': 'n'}))
-
-                dadosBar3 = (dadosBar1.groupby(['classe'])['ordem']
-                            .mean().reset_index().merge(dadosBar2[['classe', 'n']], on='classe')
-                            .sort_values(['ordem']))
-
+                # Remova a coluna 'HT_Est' do dataframe de saída
+                dadosBar2 = dadosBar2[['classe', 'n', 'ordem']]
                 
-                fig2 = px.bar(dadosBar3, x='classe', y='n')
+                fig2 = px.bar(dadosBar2, x='classe', y='n')
                 fig2.update_traces(marker_color="#1D250E")
                 #fig2.update_layout(plot_bgcolor="#FFFAFA")
                                                                             
@@ -542,66 +480,36 @@ if page == 'Sucupira Agroflorestas':
 
             #Iniciando boxplot
 
-            def classe(data = df1, numberClass = 13):
-                        
-                minData = floor(min(data))
-                maxData = max(data)
-            
-                ampTotal = round(maxData - minData,4)
-                ampClass = round(ampTotal / numberClass+0.02, 4) 
-                
-                classes = []
-                LI = []
-                LS = []
-                centro = []
-                clas = []
-                
-                for i in range (0, numberClass): 
-                    if i == 0:
-                        classes.append(minData)
-                    else:
-                        classes.append(classes[i-1] + ampClass) 
-                        
-                for j in range(0, numberClass-1):        
-                    LI.append(classes[j])
-                    LS.append(classes[j+1])
-                    clas.append('['+str(round(classes[j], 2))+ ", "+ str(round(classes[j+1], 2))+'[')
+            def classe(data=df1, numberClass=13):
+                minData = np.floor(data.min())
+                maxData = np.round(data.max() + 0.0001, 4)  # Use a small value to ensure maximum value is included in the last interval
 
-                LI.append(classes[j+1])
-                LS.append(classes[j+1] + ampClass)
-                clas.append('['+str(round(classes[j+1],2))+ ", "+ str(round(classes[j+1]+ ampClass,2))+'[')   
-                lista_de_tuplas = list(zip(LI, LS, clas))                
-                    
-                lista_de_tuplas = list(zip(LI, LS, clas))
+                rangeData = maxData - minData
+                classes = np.linspace(minData, maxData + 0.05 * rangeData, num=numberClass, endpoint=True)  # Increase upper limit by 10% of range
+                LI = np.round(classes[:-1], 4)
+                LS = np.round(classes[1:], 4)
 
-                # converte uma lista de tuplas num DataFrame
-                df = pd.DataFrame(lista_de_tuplas, columns=['LI', 'LS', 'clas'])       
-                                        
+                clas = [f"[{LI[i]}, {LS[i]})" for i in range(numberClass-1)]
+
+                df = pd.DataFrame({'LI': LI, 'LS': LS, 'clas': clas})
                 return df
 
-            dadosHist = df.loc[(df['Especie'].isin(especie)) & (~df['AB'].isnull())]
-            dadosBar = classe(data = round(dadosHist['AB'], 4))
-            dadosHist['classe'] = 'classe'
-            dadosHist['ordem'] = 0
+            # Filtre os dados com base na espécie e remova as linhas com valor nulo em 'AB'
+            dadosHist = df.query('Especie in @especie and not AB.isnull()')
 
-            for i in range(len(dadosBar)):      
-                dadosHist.loc[dadosHist['AB'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'classe'] = dadosBar.loc[i, 'clas']
-                dadosHist.loc[dadosHist['AB'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'ordem'] = dadosBar.loc[i, 'LI']
+            # Crie uma coluna que indica a classe para cada linha com base nos limites das classes
+            dadosBar = classe(data=dadosHist['AB'])
+            dadosHist['classe'] = pd.cut(dadosHist['AB'], bins=dadosBar['LI'].tolist()+[dadosBar['LS'].iloc[-1]], labels=dadosBar['clas'].tolist())
 
-            dadosBar1 = dadosHist.sort_values(['ordem'])
+            # Agrupe as linhas por classe e conte o número de linhas em cada classe
+            dadosBar2 = dadosHist.groupby('classe')['AB'].agg(['count', 'mean']).reset_index()
+            dadosBar2 = dadosBar2.rename(columns={'count': 'n', 'mean': 'ordem'}).sort_values('ordem')
 
-            dadosBar2 = (dadosBar1.groupby(['classe'])['ordem']
-                        .count().reset_index().rename(columns={'ordem': 'n'}))
-
-            dadosBar3 = (dadosBar1.groupby(['classe'])['ordem']
-                        .mean().reset_index().merge(dadosBar2[['classe', 'n']], on='classe')
-                        .sort_values(['ordem']))
+            # Remova a coluna 'AB' do dataframe de saída
+            dadosBar2 = dadosBar2[['classe', 'n', 'ordem']]        
+                       
             
-
-                        
-
-            
-            fig2 = px.bar(dadosBar3, x='classe', y='n')
+            fig2 = px.bar(dadosBar2, x='classe', y='n')
             fig2.update_traces(marker_color="#1D250E")
             #fig2.update_layout(plot_bgcolor="#FFFAFA")
                                                                         
@@ -679,66 +587,36 @@ if page == 'Sucupira Agroflorestas':
 
             
     #Função para fluxograma inicia aqui 
-            def classe(data = df1, numberClass = 13):
-                        
-                minData = floor(min(data))
-                maxData = max(data)
-            
-                ampTotal = round(maxData - minData,4)
-                ampClass = round(ampTotal / numberClass+ 0.002, 4) 
-                
-                classes = []
-                LI = []
-                LS = []
-                centro = []
-                clas = []
-                
-                for i in range (0, numberClass): 
-                    if i == 0:
-                        classes.append(minData)
-                    else:
-                        classes.append(classes[i-1] + ampClass) 
-                        
-                for j in range(0, numberClass-1):        
-                    LI.append(classes[j])
-                    LS.append(classes[j+1])
-                    clas.append('['+str(round(classes[j], 4))+ ", "+ str(round(classes[j+1], 4))+'[')
+            def classe(data=df1, numberClass=13):
+                minData = np.floor(data.min())
+                maxData = np.round(data.max() + 0.0001, 4)  # Use a small value to ensure maximum value is included in the last interval
 
-                LI.append(classes[j+1])
-                LS.append(classes[j+1] + ampClass)
-                clas.append('['+str(round(classes[j+1],4))+ ", "+ str(round(classes[j+1]+ ampClass,4))+'[')   
-                lista_de_tuplas = list(zip(LI, LS, clas))                
-                    
-                lista_de_tuplas = list(zip(LI, LS, clas))
+                rangeData = maxData - minData
+                classes = np.linspace(minData, maxData + 0.02 * rangeData, num=numberClass, endpoint=True)  # Increase upper limit by 10% of range
+                LI = np.round(classes[:-1], 4)
+                LS = np.round(classes[1:], 4)
 
-                # converte uma lista de tuplas num DataFrame
-                df = pd.DataFrame(lista_de_tuplas, columns=['LI', 'LS', 'clas'])       
-                                        
+                clas = [f"[{LI[i]}, {LS[i]})" for i in range(numberClass-1)]
+
+                df = pd.DataFrame({'LI': LI, 'LS': LS, 'clas': clas})
                 return df
 
-            dadosHist = df.loc[(df['Especie'].isin(especie)) & (~df['Volume'].isnull())]
-            dadosBar = classe(data = round(dadosHist['Volume'], 4))
-            dadosHist['classe'] = 'classe'
-            dadosHist['ordem'] = 0
+            # Filtre os dados com base na espécie e remova as linhas com valor nulo em 'Volume'
+            dadosHist = df.query('Especie in @especie and not Volume.isnull()')
 
-            for i in range(len(dadosBar)):      
-                dadosHist.loc[dadosHist['Volume'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'classe'] = dadosBar.loc[i, 'clas']
-                dadosHist.loc[dadosHist['Volume'].between(dadosBar.loc[i, 'LI'], dadosBar.loc[i, 'LS']),'ordem'] = dadosBar.loc[i, 'LI']
+            # Crie uma coluna que indica a classe para cada linha com base nos limites das classes
+            dadosBar = classe(data=dadosHist['Volume'])
+            dadosHist['classe'] = pd.cut(dadosHist['Volume'], bins=dadosBar['LI'].tolist()+[dadosBar['LS'].iloc[-1]], labels=dadosBar['clas'].tolist())
 
-            dadosBar1 = dadosHist.sort_values(['ordem'])
+            # Agrupe as linhas por classe e conte o número de linhas em cada classe
+            dadosBar2 = dadosHist.groupby('classe')['Volume'].agg(['count', 'mean']).reset_index()
+            dadosBar2 = dadosBar2.rename(columns={'count': 'n', 'mean': 'ordem'}).sort_values('ordem')
 
-            dadosBar2 = (dadosBar1.groupby(['classe'])['ordem']
-                        .count().reset_index().rename(columns={'ordem': 'n'}))
-
-            dadosBar3 = (dadosBar1.groupby(['classe'])['ordem']
-                        .mean().reset_index().merge(dadosBar2[['classe', 'n']], on='classe')
-                        .sort_values(['ordem']))
-            
-
+            # Remova a coluna 'Volume' do dataframe de saída
+            dadosBar2 = dadosBar2[['classe', 'n', 'ordem']]          
                         
-
             
-            fig2 = px.bar(dadosBar3, x='classe', y='n')
+            fig2 = px.bar(dadosBar2, x='classe', y='n')
             fig2.update_traces(marker_color="#1D250E")
             #fig2.update_layout(plot_bgcolor="#FFFAFA")
                                                                         
